@@ -260,7 +260,7 @@
             const ordersListElem = document.getElementById('admin-orders-list');
             if (ordersRaw !== "empty" && ordersRaw) {
                 ordersListElem.innerHTML = "";
-                let orders = decodeURIComponent(ordersRaw).split("---");
+                let orders = decodeURIComponent(ordersRaw).split("___");
                 orders.forEach(oStr => {
                     let parts = oStr.split(":");
                     if (parts.length === 5) {
@@ -297,7 +297,7 @@
             if (usersRaw !== "empty" && usersRaw) {
                 selectElem.innerHTML = "";
                 listElem.innerHTML = "";
-                let users = decodeURIComponent(usersRaw).split("---");
+                let users = decodeURIComponent(usersRaw).split("___");
                 users.forEach(uStr => {
                     let parts = uStr.split(":");
                     if (parts.length === 4) {
@@ -439,6 +439,10 @@
         const taskCont = document.getElementById('tasks-container');
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
+            c.items.items.forEach(t => { // на всякий случай
+                // handled by template loop below
+            });
+            // standard task loop:
             c.items.forEach(t => {
                 html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️</div></div>`;
             });
