@@ -48,6 +48,9 @@
         .income { color: #00ff00; font-weight: bold; }
         .expense { color: var(--neon-pink); font-weight: bold; }
 
+        .clickable-card { cursor: pointer; transition: 0.2s; }
+        .clickable-card:active { border-color: var(--neon-blue); background: #1a1a26; }
+
         .products-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .product-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border-left: 3px solid var(--neon-pink); }
         .product-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
@@ -164,6 +167,7 @@
         </div>
 
         <h3>👥 Список сотрудников</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Нажмите на сотрудника, чтобы запросить его отчет в чат с ботом.</p>
         <div class="card" id="admin-users-list"></div>
     </div>
 
@@ -292,7 +296,7 @@
             }
             updateTaskList();
 
-            // Заполняем список сотрудников
+            // Заполняем список сотрудников с кликом для запроса отчета в чат
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             try {
@@ -304,17 +308,23 @@
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
                         selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
                         listElem.innerHTML += `
-                            <div class="history-item">
+                            <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 12px 8px; border-bottom: 1px solid #2a2a35;">
                                 <div>
-                                    <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">${u.name}</div>
-                                    <div class="history-date">Опрос: ${surveyText}</div>
+                                    <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">👤 ${u.name} 📥</div>
+                                    <div class="history-date">Опрос: ${surveyText} | Нажмите для отчета в чат</div>
                                 </div>
-                                <div style="color: #ffd700; font-weight: bold;">${u.balance} ⭐️</div>
+                                <div style="color: #ffd700; font-weight: bold; font-size: 16px;">${u.balance} ⭐️</div>
                             </div>`;
                     });
                 }
             } catch (e) {
                 console.error("Ошибка парсинга сотрудников:", e);
+            }
+        }
+
+        function requestUserReport(userId, userName) {
+            if (confirm(`Запросить детальный отчет по сотруднику ${userName} в чат с ботом?`)) {
+                tg.sendData(`view_user|${userId}`);
             }
         }
 
@@ -371,17 +381,17 @@
             { id: "item_7", name: "Обед на рабочем месте", price: 15, desc: "Доставка из KFC, BurgerKing или Вкусно и точка." },
             { id: "item_8", name: "Энергетики HQD/Gorilla (12 шт)", price: 15, desc: "Месячный запас бодрости!" },
             { id: "item_9", name: "Энергетики Monster (12 шт)", price: 25, desc: "Месячный запас крутого энергетика!" },
-            { id: "item_10", name: "Рандом бокс", price: 25, desc: "Сюрприз-бокс с секретным наполнением." },
-            { id: "item_11", name: "+15 тыс в личный план", price: 30, desc: "Помощь в выполнении личного плана продаж." },
-            { id: "item_12", name: "Сертификат Золотое Яблоко", price: 40, desc: "Подарочный сертификат на 3000 рублей." },
-            { id: "item_13", name: "Рюкзак Муассель", price: 45, desc: "Вместительный фирменный рюкзак." },
-            { id: "item_14", name: "Кофта Муассель (размер S)", price: 55, desc: "Уютная фирменная кофта." },
-            { id: "item_15", name: "Глэмпинг «Лесотерапия»", price: 65, desc: "Суточный отдых на двоих на природе." },
-            { id: "item_16", name: "Премия 7 000 руб.", price: 90, desc: "Приятная денежная прибавка." },
-            { id: "item_17", name: "Невыход на подмены (2 мес)", price: 100, desc: "Официальное освобождение от подмен." },
-            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты." },
-            { id: "item_19", name: "Премия 15 000 руб.", price: 200, desc: "Мощный денежный бонус!" },
-            { id: "item_20", name: "Чаша Хука", price: 350, desc: "Эксклюзивный ценный приз!" }
+            { id: "item_10", name: "Рандом бокс", price: 25, desc: "Сюрприз-бокс с секретным наполнением."},
+            { id: "item_11", name: "+15 тыс в личный план", price: 30, desc: "Помощь в выполнении личного плана продаж."},
+            { id: "item_12", name: "Сертификат Золотое Яблоко", price: 40, desc: "Подарочный сертификат на 3000 рублей."},
+            { id: "item_13", name: "Рюкзак Муассель", price: 45, desc: "Вместительный фирменный рюкзак."},
+            { id: "item_14", name: "Кофта Муассель (размер S)", price: 55, desc: "Уютная фирменная кофта."},
+            { id: "item_15", name: "Глэмпинг «Лесотерапия»", price: 65, desc: "Суточный отдых на двоих на природе."},
+            { id: "item_16", name: "Премия 7 000 руб.", price: 90, desc: "Приятная денежная прибавка."},
+            { id: "item_17", name: "Невыход на подмены (2 мес)", price: 100, desc: "Официальное освобождение от подмен."},
+            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты."},
+            { id: "item_19", name: "Премия 15 000 руб.", price: 200, desc: "Мощный денежный бонус!"},
+            { id: "item_20", name: "Чаша Хука", price: 350, desc: "Эксклюзивный ценный приз!"}
         ];
 
         const tasks = [
@@ -430,7 +440,7 @@
                     <div class="product-title">${p.name}</div>
                     <div class="product-desc">${p.desc}</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️️</span>
+                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️</span>
                         <button class="buy-btn" onclick="buyItem('${p.id}')">Купить</button>
                     </div>
                 </div>`;
