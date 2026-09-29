@@ -97,7 +97,6 @@
         <div class="card balance-block">
             <div class="balance-title" id="user-greeting">Твой баланс</div>
             <div class="balance-amount" id="user-balance">0 ⭐️</div>
-            <button style="background:transparent; border:1px solid var(--neon-blue); color:var(--neon-blue); padding:6px 14px; border-radius:6px; font-size:12px; cursor:pointer; margin-top:10px;" onclick="refreshData()">🔄 Обновить данные</button>
         </div>
         
         <h3>📜 История операций</h3>
@@ -193,7 +192,7 @@
         tg.ready();
 
         const urlParams = new URLSearchParams(window.location.search);
-        const balance = urlParams.get('bal') || "0";
+        let currentBalance = parseInt(urlParams.get('bal') || "0");
         const surveyCompleted = urlParams.get('survey') === "1";
         const isAdmin = urlParams.get('admin') === "1";
         const historyRaw = urlParams.get('history') || "empty";
@@ -202,11 +201,7 @@
 
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
-        document.getElementById('user-balance').innerText = `${balance} ⭐️`;
-
-        function refreshData() {
-            tg.sendData("get_balance");
-        }
+        document.getElementById('user-balance').innerText = `${currentBalance} ⭐️`;
 
         const tasksData = {
             "sales": {
@@ -252,6 +247,29 @@
             }
         };
 
+        const products = [
+            { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
+            { id: "item_2", name: "Щипцы Муассель", price: 7, desc: "Удобные фирменные щипцы для работы с углем." },
+            { id: "item_3", name: "Такси до работы (эконом)", price: 10, desc: "Оплатим твою поездку на смену на такси." },
+            { id: "item_4", name: "Термостакан Муассель", price: 10, desc: "Стильный фирменный стакан." },
+            { id: "item_5", name: "Обнуление одного опоздания", price: 15, desc: "Прощаем одно опоздание до 15 минут." },
+            { id: "item_6", name: "Термокружка Муассель", price: 15, desc: "Фирменная кружка, долго держит тепло." },
+            { id: "item_7", name: "Обед на рабочем месте", price: 15, desc: "Доставка из KFC, BurgerKing или Вкусно и точка." },
+            { id: "item_8", name: "Энергетики HQD/Gorilla (12 шт)", price: 15, desc: "Месячный запас бодрости!" },
+            { id: "item_9", name: "Энергетики Monster (12 шт)", price: 25, desc: "Месячный запас крутого энергетика!" },
+            { id: "item_10", name: "Рандом бокс", price: 25, desc: "Сюрприз-бокс с секретным наполнением."},
+            { id: "item_11", name: "+15 тыс в личный план", price: 30, desc: "Помощь в выполнении личного плана продаж."},
+            { id: "item_12", name: "Сертификат Золотое Яблоко", price: 40, desc: "Подарочный сертификат на 3000 рублей."},
+            { id: "item_13", name: "Рюкзак Муассель", price: 45, desc: "Вместительный фирменный рюкзак."},
+            { id: "item_14", name: "Кофта Муассель (размер S)", price: 55, desc: "Уютная фирменная кофта."},
+            { id: "item_15", name: "Глэмпинг «Лесотерапия»", price: 65, desc: "Суточный отдых на двоих на природе."},
+            { id: "item_16", name: "Премия 7 000 руб.", price: 90, desc: "Приятная денежная прибавка."},
+            { id: "item_17", name: "Невыход на подмены (2 мес)", price: 100, desc: "Официальное освобождение от подмен."},
+            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты."},
+            { id: "item_19", name: "Премия 15 000 руб.", price: 200, desc: "Мощный денежный бонус!"},
+            { id: "item_20", name: "Чаша Хука", price: 350, desc: "Эксклюзивный ценный приз!"}
+        ];
+
         if (isAdmin) {
             const navBar = document.getElementById('nav-bar');
             navBar.innerHTML += `
@@ -260,7 +278,6 @@
                 </div>
             `;
 
-            // Заполняем заявки из магазина
             const ordersListElem = document.getElementById('admin-orders-list');
             try {
                 let orders = JSON.parse(decodeURIComponent(ordersRaw));
@@ -288,7 +305,6 @@
                 ordersListElem.innerHTML = `<div style="color: var(--text-muted); text-align:center;">Нет новых заявок</div>`;
             }
 
-            // Заполняем выпадающий список категорий и задач
             const catSelect = document.getElementById('admin-cat-select');
             catSelect.innerHTML = "";
             for (let cKey in tasksData) {
@@ -296,7 +312,6 @@
             }
             updateTaskList();
 
-            // Заполняем список сотрудников
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             try {
@@ -306,7 +321,7 @@
                     listElem.innerHTML = "";
                     users.forEach(u => {
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
-                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️️)</option>`;
+                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
                         listElem.innerHTML += `
                             <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 10px 4px; border-bottom: 1px solid #2a2a35;">
                                 <div>
@@ -324,7 +339,7 @@
 
         function requestUserReport(userId, userName) {
             if (confirm(`Запросить детальный отчет по сотруднику ${userName} в чат с ботом?`)) {
-                tg.sendData(`view_user|${userId}`);
+                tg.sendData(JSON.stringify({ action: "view_user", target_id: userId }));
             }
         }
 
@@ -345,7 +360,61 @@
                     card.style.opacity = "0";
                     setTimeout(() => card.remove(), 300);
                 }
-                tg.sendData(`${action}|${orderId}`);
+                tg.sendData(JSON.stringify({ action: action, order_id: orderId }));
+            }
+        }
+
+        function buyItem(itemId) {
+            let product = products.find(p => p.id === itemId);
+            if (!product) return;
+
+            if (currentBalance < product.price) {
+                alert(`Недостаточно звезд! Нужно ${product.price} ⭐️, а у тебя ${currentBalance} ⭐️.`);
+                return;
+            }
+
+            if (confirm(`Купить «${product.name}» за ${product.price} ⭐️?`)) {
+                currentBalance -= product.price;
+                document.getElementById('user-balance').innerText = `${currentBalance} ⭐️`;
+                
+                // Отправляем в фоне боту без закрытия приложения
+                tg.sendData(JSON.stringify({ action: "buy", item_id: itemId }));
+                alert("⏳ Заявка на покупку отправлена руководителю!");
+            }
+        }
+
+        function submitSurvey() {
+            let q1 = document.getElementById('q1').value.trim();
+            let q2 = document.getElementById('q2').value.trim();
+            let q3 = document.getElementById('q3').value.trim();
+
+            if (!q1 || !q2 || !q3) {
+                alert("Пожалуйста, ответьте на все вопросы!");
+                return;
+            }
+
+            currentBalance += 1;
+            document.getElementById('user-balance').innerText = `${currentBalance} ⭐️`;
+            document.getElementById('survey-form').style.display = 'none';
+            document.getElementById('survey-done').style.display = 'block';
+
+            tg.sendData(JSON.stringify({ action: "survey", q1: q1, q2: q2, q3: q3 }));
+            alert("✅ Спасибо! Опрос отправлен, начислена 1 ⭐️.");
+        }
+
+        function adminGiveTaskStars() {
+            const userId = document.getElementById('admin-user-select').value;
+            const catId = document.getElementById('admin-cat-select').value;
+            const taskId = document.getElementById('admin-task-select').value;
+
+            if (!userId || !catId || !taskId) {
+                alert("Выберите сотрудника и достижение!");
+                return;
+            }
+
+            if (confirm("Начислить звезды за выбранное достижение?")) {
+                tg.sendData(JSON.stringify({ action: "give_task", target_id: userId, cat_id: catId, task_id: taskId }));
+                alert("✅ Звезды успешно начислены сотруднику!");
             }
         }
 
@@ -377,68 +446,6 @@
             document.getElementById('survey-done').style.display = 'block';
         }
 
-        const products = [
-            { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
-            { id: "item_2", name: "Щипцы Муассель", price: 7, desc: "Удобные фирменные щипцы для работы с углем." },
-            { id: "item_3", name: "Такси до работы (эконом)", price: 10, desc: "Оплатим твою поездку на смену на такси." },
-            { id: "item_4", name: "Термостакан Муассель", price: 10, desc: "Стильный фирменный стакан." },
-            { id: "item_5", name: "Обнуление одного опоздания", price: 15, desc: "Прощаем одно опоздание до 15 минут." },
-            { id: "item_6", name: "Термокружка Муассель", price: 15, desc: "Фирменная кружка, долго держит тепло." },
-            { id: "item_7", name: "Обед на рабочем месте", price: 15, desc: "Доставка из KFC, BurgerKing или Вкусно и точка." },
-            { id: "item_8", name: "Энергетики HQD/Gorilla (12 шт)", price: 15, desc: "Месячный запас бодрости!" },
-            { id: "item_9", name: "Энергетики Monster (12 шт)", price: 25, desc: "Месячный запас крутого энергетика!" },
-            { id: "item_10", name: "Рандом бокс", price: 25, desc: "Сюрприз-бокс с секретным наполнением."},
-            { id: "item_11", name: "+15 тыс в личный план", price: 30, desc: "Помощь в выполнении личного плана продаж."},
-            { id: "item_12", name: "Сертификат Золотое Яблоко", price: 40, desc: "Подарочный сертификат на 3000 рублей."},
-            { id: "item_13", name: "Рюкзак Муассель", price: 45, desc: "Вместительный фирменный рюкзак."},
-            { id: "item_14", name: "Кофта Муассель (размер S)", price: 55, desc: "Уютная фирменная кофта."},
-            { id: "item_15", name: "Глэмпинг «Лесотерапия»", price: 65, desc: "Суточный отдых на двоих на природе."},
-            { id: "item_16", name: "Премия 7 000 руб.", price: 90, desc: "Приятная денежная прибавка."},
-            { id: "item_17", name: "Невыход на подмены (2 мес)", price: 100, desc: "Официальное освобождение от подмен."},
-            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты."},
-            { id: "item_19", name: "Премия 15 000 руб.", price: 200, desc: "Мощный денежный бонус!"},
-            { id: "item_20", name: "Чаша Хука", price: 350, desc: "Эксклюзивный ценный приз!"}
-        ];
-
-        const tasks = [
-            { cat: "1. Продажи", items: [
-                { name: "Выполнение личного плана продаж на протяжении трех месяцев подряд", stars: 25 },
-                { name: "Выполнение личного плана продаж на протяжении пяти месяцев подряд", stars: 25 },
-                { name: "Рекордная выручка за смену", stars: 40 },
-                { name: "Первое выполнение индивидуального плана продаж", stars: 5 },
-                { name: "Продал больше всех акций в период проведения", stars: 10 },
-                { name: "Выполнение плана продаж на 110 и более %", stars: 15 },
-                { name: "Выполнение плана", stars: 3 },
-                { name: "Продал больше всех единиц товара в период мотивации в своей категории", stars: 7 }
-            ]},
-            { cat: "2. Личное развитие", items: [
-                { name: "Прохождение стажировки и сдача экзамена для начала работы продавцом", stars: 5 },
-                { name: "Повышение до грейда “старший продавец”", stars: 15 },
-                { name: "Повышение до грейда “эксперт”", stars: 25 },
-                { name: "Успешное прохождение всех тренингов по продажам", stars: 10 }
-            ]},
-            { cat: "3. Качество", items: [
-                { name: "Ревизия с расхождением до 1000 руб. на протяжении 2 месяцев подряд", stars: 7 },
-                { name: "Успешная сдача стандартов по итогам двух проверок 32/32", stars: 5 },
-                { name: "Успешное прохождение проверки тайным покупателем на максимальный балл", stars: 50 }
-            ]},
-            { cat: "4. Инициатива", items: [
-                { name: "Организация досуга команды", stars: 5 },
-                { name: "Организация и проведение обучения для сотрудников", stars: 10 },
-                { name: "Приведенный друг в компанию, который отработал 3 месяца", stars: 15 },
-                { name: "Наставничество новых сотрудников на протяжении месяца с конкретными результатами", stars: 10 },
-                { name: "Выход на подмену", stars: 2 },
-                { name: "Выход на экстренную подмену (уведомление за сутки и меньше до смены)", stars: 5 }
-            ]}
-        ];
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
-        }
-
         const prodCont = document.getElementById('products-container');
         products.forEach(p => {
             prodCont.innerHTML += `
@@ -456,44 +463,17 @@
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
             c.items.forEach(t => {
-                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️️</div></div>`;
+                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️</div></div>`;
             });
             html += `</div>`;
             taskCont.innerHTML += html;
         });
 
-        function buyItem(itemId) {
-            if (confirm("Отправить заявку на покупку этого товара?")) {
-                tg.sendData(itemId);
-            }
-        }
-
-        function submitSurvey() {
-            let q1 = document.getElementById('q1').value.trim();
-            let q2 = document.getElementById('q2').value.trim();
-            let q3 = document.getElementById('q3').value.trim();
-
-            if (!q1 || !q2 || !q3) {
-                alert("Пожалуйста, ответьте на все вопросы!");
-                return;
-            }
-
-            tg.sendData(`survey|${q1}|${q2}|${q3}`);
-        }
-
-        function adminGiveTaskStars() {
-            const userId = document.getElementById('admin-user-select').value;
-            const catId = document.getElementById('admin-cat-select').value; // Ошибка исправлена здесь
-            const taskId = document.getElementById('admin-task-select').value;
-
-            if (!userId || !catId || !taskId) {
-                alert("Выберите сотрудника и достижение!");
-                return;
-            }
-
-            if (confirm("Начислить звезды за выбранное достижение?")) {
-                tg.sendData(`give_task|${userId}|${catId}|${taskId}`);
-            }
+        function switchTab(tabId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
         }
     </script>
 </body>
