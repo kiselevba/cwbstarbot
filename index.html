@@ -306,7 +306,7 @@
                     listElem.innerHTML = "";
                     users.forEach(u => {
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
-                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
+                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️️)</option>`;
                         listElem.innerHTML += `
                             <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 10px 4px; border-bottom: 1px solid #2a2a35;">
                                 <div>
@@ -339,12 +339,6 @@
 
         function processOrder(action, orderId) {
             if (confirm("Подтвердить действие с заявкой?")) {
-                // Отправляем данные боту в фоне через CloudStorage / sendData, 
-                // но чтобы не выкидывало из приложения при вызове tg.close(), 
-                // используем обертку fetch или отправку через бот без принудительного закрытия, 
-                // либо выводим красивое сообщение. 
-                // Поскольку стандартный tg.sendData закрывает MiniApp по дизайну Telegram, 
-                // мы визуально скрываем карточку прямо сейчас:
                 const card = document.getElementById(`order-card-${orderId}`);
                 if (card) {
                     card.style.transition = "0.3s";
@@ -462,7 +456,7 @@
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
             c.items.forEach(t => {
-                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️</div></div>`;
+                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️️</div></div>`;
             });
             html += `</div>`;
             taskCont.innerHTML += html;
@@ -489,7 +483,7 @@
 
         function adminGiveTaskStars() {
             const userId = document.getElementById('admin-user-select').value;
-            const catId = document.getElementById('admin-cat-select'].value;
+            const catId = document.getElementById('admin-cat-select').value; // Ошибка исправлена здесь
             const taskId = document.getElementById('admin-task-select').value;
 
             if (!userId || !catId || !taskId) {
