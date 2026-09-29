@@ -1,11 +1,13 @@
 import asyncio
 import sqlite3
+import json
+import time
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, WebAppInfo
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, WebAppInfo, Message
 
 TOKEN = "8732302914:AAGf_rvj1Dnyo-QR7CmUQ5QSUi4KEpor1pM"
 ADMIN_IDS = [514662828, 348370951]
@@ -96,6 +98,8 @@ def init_db():
                        type TEXT, description TEXT, date TEXT)''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS survey_answers
                       (id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id INTEGER, q1 TEXT, q2 TEXT, q3 TEXT, date TEXT)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS orders
+                      (id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id INTEGER, item_name TEXT, price INTEGER, status TEXT DEFAULT 'pending', date TEXT)''')
     conn.commit()
     conn.close()
 
@@ -107,16 +111,33 @@ def get_main_keyboard(tg_id):
     cursor = conn.cursor()
     user = cursor.execute("SELECT balance, survey_completed FROM users WHERE tg_id = ?", (tg_id,)).fetchone()
     history = cursor.execute("SELECT amount, type, description, date FROM transactions WHERE tg_id = ? ORDER BY id DESC LIMIT 10", (tg_id,)).fetchall()
-    conn.close()
     
     balance = user[0] if user else 0
     survey_done = user[1] if user else 0
+    is_admin = 1 if tg_id in ADMIN_IDS else 0
+    
+    users_list = []
+    orders_list = []
+    
+    if is_admin:
+        all_users = cursor.execute("SELECT tg_id, full_name, balance, survey_completed FROM users").fetchall()
+        for u in all_users:
+            users_list.append({"id": u[0], "name": u[1], "balance": u[2], "survey": u[3]})
+            
+        pending_orders = cursor.execute("SELECT orders.id, users.full_name, orders.item_name, orders.price, orders.date FROM orders JOIN users ON orders.tg_id = users.tg_id WHERE orders.status = 'pending'").fetchall()
+        for o in pending_orders:
+            orders_list.append({"id": o[0], "emp": o[1], "item": o[2], "price": o[3], "date": o[4]})
+            
+    conn.close()
     
     history_str = ",".join([f"{h[0]}|{h[1]}|{h[2]}|{h[3]}" for h in history]) if history else "empty"
     import urllib.parse
     encoded_history = urllib.parse.quote(history_str)
+    
+    encoded_users = urllib.parse.quote(json.dumps(users_list, ensure_ascii=False))
+    encoded_orders = urllib.parse.quote(json.dumps(orders_list, ensure_ascii=False))
 
-    webapp_url = f"{BASE_WEBAPP_URL}?bal={balance}&survey={survey_done}&history={encoded_history}"
+    webapp_url = f"{BASE_WEBAPP_URL}?bal={balance}&survey={survey_done}&admin={is_admin}&users={encoded_users}&orders={encoded_orders}&history={encoded_history}&t={int(time.time())}"
 
     kb = [
         [KeyboardButton(text="🌟 Открыть Mini App", web_app=WebAppInfo(url=webapp_url))]
@@ -172,8 +193,8 @@ async def admin_list_users(message: types.Message):
     
     text = "👥 **Список сотрудников CWB:**\n\n"
     for idx, (name, bal, survey) in enumerate(users, 1):
-        survey_status = "✅ Прошел"
-        text += f"{idx}. **{name}**\n   └ Баланс: {bal} ⭐️ | Опрос: {survey_status}\n\n"
+        survey_status = "✅ Прошел" if survey == 1 else "❌ Не прошел"
+        text += f"{idx}. **{name}**\n   └ Баланс: {bal} ⭐️️ | Опрос: {survey_status}\n\n"
     await message.answer(text, parse_mode="Markdown")
 
 @dp.message(F.text == "🌟 Начислить звезды")
@@ -186,67 +207,90 @@ async def admin_start_add_stars(message: types.Message, state: FSMContext):
     kb = [[InlineKeyboardButton(text=f_name, callback_data=f"give_{u_id}")] for u_id, f_name in users]
     await message.answer("👤 Выбери сотрудника:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-@dp.callback_query(F.data.startswith("give_"))
-async def admin_choose_user(callback: CallbackQuery, state: FSMContext):
-    target_user_id = callback.data.replace("give_", "")
-    await state.update_data(target_user_id=target_user_id)
-    kb = [[InlineKeyboardButton(text=cat_data["name"], callback_data=f"acat|{cat_id}")] for cat_id, cat_data in TASKS.items()]
-    await callback.message.edit_text("🗂 Выбери категорию достижений:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
-
-@dp.callback_query(F.data.startswith("acat|"))
-async def admin_choose_category(callback: CallbackQuery, state: FSMContext):
-    cat_id = callback.data.split("|")[1]
-    kb = [[InlineKeyboardButton(text=f"{t_data['name']} (+{t_data['stars']} ⭐️)", callback_data=f"atsk|{cat_id}|{t_id}")] for t_id, t_data in TASKS[cat_id]["items"].items()]
-    kb.append([InlineKeyboardButton(text="🔙 Назад к категориям", callback_data="back_to_cat")])
-    await callback.message.edit_text(f"Категория: **{TASKS[cat_id]['name']}**", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="Markdown")
-
-@dp.callback_query(F.data == "back_to_cat")
-async def admin_back_to_cat(callback: CallbackQuery, state: FSMContext):
-    kb = [[InlineKeyboardButton(text=c_data["name"], callback_data=f"acat|{c_id}")] for c_id, c_data in TASKS.items()]
-    await callback.message.edit_text("🗂 Выбери категорию достижений:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
-
-@dp.callback_query(F.data.startswith("atsk|"))
-async def admin_choose_task(callback: CallbackQuery, state: FSMContext):
-    _, cat_id, task_id = callback.data.split("|")
-    task = TASKS[cat_id]["items"][task_id]
-    await state.update_data(cat_id=cat_id, task_id=task_id)
-    await callback.message.edit_text(f"🎯 Выбрано: **{task['name']}** (+{task['stars']} ⭐️)\n\nНапиши комментарий (или отправь `-`):", parse_mode="Markdown")
-    await state.set_state(AdminAddStars.waiting_for_comment)
-
-@dp.message(AdminAddStars.waiting_for_comment)
-async def admin_enter_comment(message: types.Message, state: FSMContext):
-    comment = message.text
-    data = await state.get_data()
-    target_user_id = int(data['target_user_id'])
-    task = TASKS[data['cat_id']]["items"][data['task_id']]
-    amount = task["stars"]
-    
-    reason = task['name']
-    if comment != "-": reason += f" ({comment})"
-        
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    curr_bal, full_name = cursor.execute("SELECT balance, full_name FROM users WHERE tg_id = ?", (target_user_id,)).fetchone()
-    new_balance = curr_bal + amount
-    cursor.execute("UPDATE users SET balance = ? WHERE tg_id = ?", (new_balance, target_user_id))
-    cursor.execute("INSERT INTO transactions (tg_id, amount, type, description, date) VALUES (?, ?, ?, ?, ?)", 
-                   (target_user_id, amount, 'income', reason, get_now_str()))
-    conn.commit()
-    conn.close()
-
-    await state.clear()
-    await message.answer(f"✅ Сотруднику **{full_name}** начислено {amount} ⭐️.", parse_mode="Markdown")
-    try: 
-        msg_text = f"🎉 **ПОЗДРАВЛЯЕМ!** 🎉\n\nТебе начислено **{amount} ⭐️**!\nЗа что: {task['name']}"
-        if comment != "-": msg_text += f"\nКомментарий: _{comment}_"
-        msg_text += f"\n\nБаланс: {new_balance} ⭐️"
-        await bot.send_message(target_user_id, msg_text, parse_mode="Markdown")
-    except: pass
-
 @dp.message(F.web_app_data)
-async def process_web_app_data(message: types.Message):
+async def process_web_app_data(message: Message):
     data_str = message.web_app_data.data
     
+    # Запрос детальной истории сотрудника из Mini App (формат: view_user|tg_id)
+    if data_str.startswith("view_user|"):
+        if message.from_user.id not in ADMIN_IDS: return
+        _, target_id_str = data_str.split("|")
+        target_id = int(target_id_str)
+        
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        user = cursor.execute("SELECT full_name, balance, survey_completed FROM users WHERE tg_id = ?", (target_id,)).fetchone()
+        txs = cursor.execute("SELECT amount, type, description, date FROM transactions WHERE tg_id = ? ORDER BY id DESC LIMIT 15", (target_id,)).fetchall()
+        conn.close()
+        
+        if user:
+            name, bal, survey = user
+            survey_text = "✅ Пройден" if survey == 1 else "❌ Не пройден"
+            text = f"👤 **Сотрудник:** {name}\n⭐️ **Баланс:** {bal} звезд\n📝 **Опрос:** {survey_text}\n\n📜 **Последние операции:**\n"
+            if txs:
+                for amount, t_type, desc, date in txs:
+                    text += f"{'🟢' if t_type=='income' else '🔴'} `{date}` | {'+' if t_type=='income' else '-'}{amount} ⭐️\n└ _{desc}_\n\n"
+            else:
+                text += "Операций пока нет."
+            await message.answer(text, parse_mode="Markdown")
+        return
+
+    if data_str.startswith("order_app|") or data_str.startswith("order_rej|"):
+        if message.from_user.id not in ADMIN_IDS: return
+        action, order_id_str = data_str.split("|")
+        order_id = int(order_id_str)
+        
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        order = cursor.execute("SELECT tg_id, item_name, price FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if order:
+            t_id, item_name, price = order
+            if action == "order_app":
+                cursor.execute("UPDATE orders SET status = 'approved' WHERE id = ?", (order_id,))
+                conn.commit()
+                await message.answer(f"✅ Заказ на «{item_name}» одобрен.")
+                try: await bot.send_message(t_id, f"🎉 Ваша заявка на **{item_name}** одобрена руководителем!")
+                except: pass
+            else:
+                cursor.execute("UPDATE orders SET status = 'rejected' WHERE id = ?", (order_id,))
+                curr_bal = cursor.execute("SELECT balance FROM users WHERE tg_id = ?", (t_id,)).fetchone()[0]
+                new_bal = curr_bal + price
+                cursor.execute("UPDATE users SET balance = ? WHERE tg_id = ?", (new_bal, t_id))
+                cursor.execute("INSERT INTO transactions (tg_id, amount, type, description, date) VALUES (?, ?, ?, ?, ?)", 
+                               (t_id, price, 'income', f"Возврат за отказ: {item_name}", get_now_str()))
+                conn.commit()
+                await message.answer(f"❌ Заказ на «{item_name}» отклонен, звезды возвращены.")
+                try: await bot.send_message(t_id, f"😔 Заявка на **{item_name}** отклонена. {price} ⭐️ возвращены на баланс.")
+                except: pass
+        conn.close()
+        await message.answer("Меню обновлено:", reply_markup=get_main_keyboard(message.from_user.id))
+        return
+
+    if data_str.startswith("give_task|"):
+        if message.from_user.id not in ADMIN_IDS: return
+        _, target_id_str, cat_id, task_id = data_str.split("|", 3)
+        target_id = int(target_id_str)
+        task = TASKS[cat_id]["items"][task_id]
+        amount = task["stars"]
+        reason = task["name"]
+
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        curr_bal, full_name = cursor.execute("SELECT balance, full_name FROM users WHERE tg_id = ?", (target_id,)).fetchone()
+        new_balance = curr_bal + amount
+        cursor.execute("UPDATE users SET balance = ? WHERE tg_id = ?", (new_balance, target_id))
+        cursor.execute("INSERT INTO transactions (tg_id, amount, type, description, date) VALUES (?, ?, ?, ?, ?)", 
+                       (target_id, amount, 'income', reason, get_now_str()))
+        conn.commit()
+        conn.close()
+
+        await message.answer(f"✅ Начислено {amount} ⭐️ сотруднику **{full_name}** за «{reason}»!", parse_mode="Markdown")
+        try:
+            await bot.send_message(target_id, f"🎉 Вам начислено **{amount} ⭐️**!\nЗа достижение: {reason}\n\nБаланс: {new_balance} ⭐️", parse_mode="Markdown")
+        except: pass
+        await message.answer("Меню обновлено:", reply_markup=get_main_keyboard(message.from_user.id))
+        return
+
     if data_str == "get_balance":
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -258,7 +302,8 @@ async def process_web_app_data(message: types.Message):
         text = f"⭐️ **Твой актуальный баланс:** {balance} звезд\n\n📜 **Последние операции:**\n"
         for amount, t_type, desc, date in history:
             text += f"{'🟢' if t_type=='income' else '🔴'} `{date}` | {'+' if t_type=='income' else '-'}{amount} ⭐️\n└ _{desc}_\n\n"
-        return await message.answer(text, parse_mode="Markdown")
+        await message.answer(text, parse_mode="Markdown", reply_markup=get_main_keyboard(message.from_user.id))
+        return
 
     if data_str.startswith("survey|"):
         _, q1, q2, q3 = data_str.split("|", 3)
@@ -278,7 +323,9 @@ async def process_web_app_data(message: types.Message):
                        (message.from_user.id, 1, 'income', 'Бонус за прохождение опроса', get_now_str()))
         conn.commit()
         conn.close()
-        return await message.answer("✅ Спасибо за ответы!\n\n🎉 За прохождение опроса начислена **1 ⭐️**!", parse_mode="Markdown")
+        await message.answer("✅ Спасибо за ответы!\n\n🎉 За прохождение опроса начислена **1 ⭐️**!", parse_mode="Markdown")
+        await message.answer("Меню обновлено:", reply_markup=get_main_keyboard(message.from_user.id))
+        return
 
     item_id = data_str
     item = PRODUCTS.get(item_id)
@@ -293,46 +340,23 @@ async def process_web_app_data(message: types.Message):
         cursor.execute("UPDATE users SET balance = ? WHERE tg_id = ?", (new_balance, message.from_user.id))
         cursor.execute("INSERT INTO transactions (tg_id, amount, type, description, date) VALUES (?, ?, ?, ?, ?)", 
                        (message.from_user.id, item['price'], 'expense', f"Заявка: {item['name']}", get_now_str()))
+        cursor.execute("INSERT INTO orders (tg_id, item_name, price, date) VALUES (?, ?, ?, ?)", 
+                       (message.from_user.id, item['name'], item['price'], get_now_str()))
         conn.commit()
         
         await message.answer(f"⏳ Заявка на **{item['name']}** отправлена руководителю!\nСписано: {item['price']} ⭐️\nОстаток: {new_balance} ⭐️", parse_mode="Markdown")
         
-        adm_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Одобрить", callback_data=f"adm_app|{message.from_user.id}|{item_id}|{item['price']}")], 
-            [InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm_rej|{message.from_user.id}|{item_id}|{item['price']}")]
-        ])
-        username_info = f" (@{message.from_user.username})" if message.from_user.username else ""
         for a_id in ADMIN_IDS:
-            try: await bot.send_message(a_id, f"🔔 **ЗАКАЗ ИЗ WEB-МАГАЗИНА!**\n\nСотрудник: {full_name}{username_info}\nТовар: {item['name']}\nЦена: {item['price']} ⭐️", reply_markup=adm_kb, parse_mode="Markdown")
+            try: await bot.send_message(a_id, f"🔔 **ЗАКАЗ ИЗ WEB-МАГАЗИНА!**\n\nСотрудник: {full_name}\nТовар: {item['name']}\nЦена: {item['price']} ⭐️", parse_mode="Markdown")
             except: pass
     else:
         await message.answer(f"❌ Недостаточно звезд для покупки **{item['name']}** (нужно {item['price']} ⭐️, а у тебя {balance} ⭐️).")
     conn.close()
-
-@dp.callback_query(F.data.startswith("adm_app|"))
-async def admin_approve(callback: CallbackQuery):
-    _, user_id, item_id, _ = callback.data.split("|")
-    await callback.message.edit_text(f"✅ Одобрено: **{PRODUCTS[item_id]['name']}**.", parse_mode="Markdown")
-    try: await bot.send_message(int(user_id), f"🎉 Твоя заявка на **{PRODUCTS[item_id]['name']}** одобрена!")
-    except: pass
-
-@dp.callback_query(F.data.startswith("adm_rej|"))
-async def admin_reject(callback: CallbackQuery):
-    _, user_id, item_id, price = callback.data.split("|")
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    bal = cursor.execute("SELECT balance FROM users WHERE tg_id = ?", (int(user_id),)).fetchone()[0]
-    cursor.execute("UPDATE users SET balance = ? WHERE tg_id = ?", (bal + int(price), int(user_id)))
-    cursor.execute("INSERT INTO transactions (tg_id, amount, type, description, date) VALUES (?, ?, ?, ?, ?)", (int(user_id), int(price), 'income', f"Возврат: {PRODUCTS[item_id]['name']}", get_now_str()))
-    conn.commit()
-    conn.close()
-    await callback.message.edit_text(f"❌ Отклонено: **{PRODUCTS[item_id]['name']}**.", parse_mode="Markdown")
-    try: await bot.send_message(int(user_id), f"😔 Заявка на **{PRODUCTS[item_id]['name']}** отклонена. {price} ⭐️ возвращены.")
-    except: pass
+    await message.answer("Меню обновлено:", reply_markup=get_main_keyboard(message.from_user.id))
 
 async def main():
     init_db()
-    print("🚀 Бот запущен (Админка расширена)!")
+    print("🚀 Бот запущен!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
