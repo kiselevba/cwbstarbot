@@ -196,6 +196,10 @@
         const usersRaw = urlParams.get('users') || "empty";
         const ordersRaw = urlParams.get('orders') || "empty";
 
+        // ДИАГНОСТИКА: выводим в консоль параметры из URL
+        console.log("🔍 [JS DEBUG] isAdmin:", isAdmin);
+        console.log("🔍 [JS DEBUG] ordersRaw:", ordersRaw);
+
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
         document.getElementById('user-balance').innerText = `${balance} ⭐️`;
@@ -260,9 +264,13 @@
             const ordersListElem = document.getElementById('admin-orders-list');
             if (ordersRaw !== "empty" && ordersRaw) {
                 ordersListElem.innerHTML = "";
-                let orders = decodeURIComponent(ordersRaw).split("___");
+                let decodedOrders = decodeURIComponent(ordersRaw);
+                let orders = decodedOrders.split("___");
+                console.log("📦 [JS DEBUG] Распакованные заказы:", orders);
+                
                 orders.forEach(oStr => {
                     let parts = oStr.split(":");
+                    console.log("📦 [JS DEBUG] Части заказа:", parts);
                     if (parts.length === 5) {
                         let [orderId, empName, itemName, price, date] = parts;
                         ordersListElem.innerHTML += `
@@ -407,7 +415,7 @@
                 { name: "Успешное прохождение проверки тайным покупателем на максимальный балл", stars: 50 }
             ]},
             { cat: "4. Инициатива", items: [
-                { name: "Организация досуга команды", stars: 5 },
+                { name: "Organзация досуга команды", stars: 5 },
                 { name: "Организация и проведение обучения для сотрудников", stars: 10 },
                 { name: "Приведенный друг в компанию, который отработал 3 месяца", stars: 15 },
                 { name: "Наставничество новых сотрудников на протяжении месяца с конкретными результатами", stars: 10 },
@@ -430,7 +438,7 @@
                     <div class="product-title">${p.name}</div>
                     <div class="product-desc">${p.desc}</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️</span>
+                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️️</span>
                         <button class="buy-btn" onclick="buyItem('${p.id}')">Купить</button>
                     </div>
                 </div>`;
@@ -439,10 +447,6 @@
         const taskCont = document.getElementById('tasks-container');
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
-            c.items.items.forEach(t => { // на всякий случай
-                // handled by template loop below
-            });
-            // standard task loop:
             c.items.forEach(t => {
                 html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️</div></div>`;
             });
