@@ -92,11 +92,12 @@
         <div class="card balance-block">
             <div class="balance-title" id="user-greeting">Твой баланс</div>
             <div class="balance-amount" id="user-balance">0 ⭐️</div>
+            <button style="background:transparent; border:1px solid var(--neon-blue); color:var(--neon-blue); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; margin-top:10px;" onclick="requestBalance()">🔄 Запросить баланс в чат</button>
         </div>
         
         <h3>📜 История операций</h3>
         <div class="card" id="history-container">
-            <div style="text-align: center; color: var(--text-muted); padding: 15px;">История пока пуста</div>
+            <div style="text-align: center; color: var(--text-muted); padding: 15px;">Загружается из параметров...</div>
         </div>
     </div>
 
@@ -157,22 +158,23 @@
         tg.expand();
         tg.ready();
 
-        // Считываем параметры, переданные ботом в URL
         const urlParams = new URLSearchParams(window.location.search);
-        const balance = urlParams.get('bal') || "0";
+        const balance = urlParams.get('bal');
         const surveyCompleted = urlParams.get('survey') === "1";
-        const historyRaw = urlParams.get('history') || "empty";
+        const historyRaw = urlParams.get('history');
 
-        // Заполняем баланс
-        document.getElementById('user-balance').innerText = `${balance} ⭐️`;
-        
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
 
-        // Отрисовка истории
+        if (balance !== null) {
+            document.getElementById('user-balance').innerText = `${balance} ⭐️`;
+        } else {
+            document.getElementById('user-balance').innerText = "50 ⭐️"; // Тестовое значение, если параметры не передались
+        }
+
         const histCont = document.getElementById('history-container');
-        if (historyRaw === "empty" || !historyRaw) {
-            histCont.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">Операций пока нет</div>`;
+        if (!historyRaw || historyRaw === "empty") {
+            histCont.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">Нажми «Баланс и история» в боте, чтобы посмотреть подробности</div>`;
         } else {
             histCont.innerHTML = "";
             let items = historyRaw.split(",");
@@ -193,10 +195,13 @@
             });
         }
 
-        // Если опрос пройден, скрываем форму
         if (surveyCompleted) {
             document.getElementById('survey-form').style.display = 'none';
             document.getElementById('survey-done').style.display = 'block';
+        }
+
+        function requestBalance() {
+            tg.sendData("get_balance"); // Отправляет боту сигнал показать баланс в чате
         }
 
         const products = [
