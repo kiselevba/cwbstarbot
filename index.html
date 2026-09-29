@@ -89,14 +89,14 @@
     <!-- ЭКРАН 1: ГЛАВНАЯ -->
     <div id="home" class="screen active">
         <div class="card balance-block">
-            <div class="balance-title">Твой баланс</div>
-            <div class="balance-amount" id="user-balance">-- ⭐️</div>
-            <div style="font-size: 18px; font-weight: bold;" id="user-name">Загрузка...</div>
+            <div class="balance-title">Сотрудник</div>
+            <div class="balance-amount" id="user-balance">CWB Star</div>
+            <div style="font-size: 16px; color: var(--text-muted);" id="user-name">Добро пожаловать!</div>
         </div>
         
-        <h3>История операций</h3>
-        <div class="card" id="history-container">
-            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Загрузка истории...</div>
+        <div class="card" style="text-align: center; padding: 20px;">
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Выбирайте товары в Магазине и выполняйте Задания для получения звезд ⭐️</p>
+            <button class="btn-primary" onclick="switchTab('store')">Перейти в магазин</button>
         </div>
     </div>
 
@@ -129,11 +129,6 @@
             
             <button class="btn-primary" onclick="submitSurvey()">Отправить (+1 ⭐️)</button>
         </div>
-        <div id="survey-done" style="display: none; text-align: center; padding: 40px 0;">
-            <div style="font-size: 40px; margin-bottom: 15px;">✅</div>
-            <h3>Опрос пройден!</h3>
-            <p style="color: var(--text-muted);">Спасибо за твои ответы.</p>
-        </div>
     </div>
 
     <!-- НИЖНЕЕ МЕНЮ -->
@@ -157,50 +152,9 @@
         tg.expand();
         tg.ready();
 
-        const userId = tg.initDataUnsafe?.user?.id || 514662828;
-        const API_URL = "http://127.0.0.1:8000";
-
-        async function loadUserData() {
-            try {
-                let response = await fetch(`${API_URL}/api/user/${userId}`);
-                let data = await response.json();
-
-                if (data.status === "ok") {
-                    document.getElementById('user-name').innerText = data.full_name;
-                    document.getElementById('user-balance').innerText = data.balance + " ⭐️";
-
-                    let historyHtml = "";
-                    if (data.history.length === 0) {
-                        historyHtml = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">История пуста</div>`;
-                    } else {
-                        data.history.forEach(h => {
-                            let isIncome = h.type === 'income';
-                            historyHtml += `
-                                <div class="history-item">
-                                    <div>
-                                        <div style="font-size: 14px;">${h.desc}</div>
-                                        <div class="history-date">${h.date}</div>
-                                    </div>
-                                    <div class="${isIncome ? 'income' : 'expense'}">${isIncome ? '+' : '-'}${h.amount} ⭐️</div>
-                                </div>`;
-                        });
-                    }
-                    document.getElementById('history-container').innerHTML = historyHtml;
-
-                    if (data.survey_completed === 1) {
-                        document.getElementById('survey-form').style.display = 'none';
-                        document.getElementById('survey-done').style.display = 'block';
-                    }
-                } else {
-                    document.getElementById('user-name').innerText = "Ошибка авторизации";
-                }
-            } catch (e) {
-                console.error("Ошибка связи с сервером:", e);
-                document.getElementById('user-name').innerText = "Сервер не отвечает";
-            }
-        }
-
-        loadUserData();
+        // Показываем имя из профиля Telegram
+        const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
+        document.getElementById('user-name').innerText = userName;
 
         const products = [
             { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
@@ -289,7 +243,7 @@
 
         function buyItem(itemId) {
             if (confirm("Отправить заявку на покупку этого товара?")) {
-                tg.sendData(itemId);
+                tg.sendData(itemId); // Мгновенно передает товар в бота и закрывает приложение
             }
         }
 
@@ -303,7 +257,7 @@
                 return;
             }
 
-            tg.sendData(`survey|${q1}|${q2}|${q3}`);
+            tg.sendData(`survey|${q1}|${q2}|${q3}`); // Передает опрос в бота
         }
     </script>
 </body>
