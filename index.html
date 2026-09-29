@@ -40,14 +40,8 @@
         
         .balance-block { text-align: center; padding: 30px 10px; border: 1px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,255,255,0.1); }
         .balance-title { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-        .balance-amount { font-size: 48px; font-weight: bold; margin: 10px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        .balance-amount { font-size: 32px; font-weight: bold; margin: 10px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
         
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2a2a35; }
-        .history-item:last-child { border-bottom: none; }
-        .history-date { font-size: 12px; color: var(--text-muted); }
-        .income { color: #00ff00; }
-        .expense { color: var(--neon-pink); }
-
         .products-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .product-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border-left: 3px solid var(--neon-pink); }
         .product-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
@@ -89,14 +83,14 @@
     <!-- ЭКРАН 1: ГЛАВНАЯ -->
     <div id="home" class="screen active">
         <div class="card balance-block">
-            <div class="balance-title">Сотрудник</div>
-            <div class="balance-amount" id="user-balance">CWB Star</div>
-            <div style="font-size: 16px; color: var(--text-muted);" id="user-name">Добро пожаловать!</div>
+            <div class="balance-title">Система мотивации</div>
+            <div class="balance-amount">CWB Stars ⭐️</div>
+            <div style="font-size: 16px; color: var(--text-muted);" id="user-name">Привет!</div>
         </div>
         
         <div class="card" style="text-align: center; padding: 20px;">
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Выбирайте товары в Магазине и выполняйте Задания для получения звезд ⭐️</p>
-            <button class="btn-primary" onclick="switchTab('store')">Перейти в магазин</button>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Твой баланс и историю начислений можно посмотреть по кнопке в чате бота.</p>
+            <button class="btn-primary" onclick="switchTab('store')">Открыть Магазин</button>
         </div>
     </div>
 
@@ -112,7 +106,7 @@
         <div class="card" id="tasks-container"></div>
     </div>
 
-    <!-- ЭКРАН 4: ОПРОС -->
+    <!-- ЭКРАN 4: ОПРОС -->
     <div id="survey" class="screen">
         <h2>Опрос</h2>
         <div class="card" id="survey-form">
@@ -152,9 +146,8 @@
         tg.expand();
         tg.ready();
 
-        // Показываем имя из профиля Telegram
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
-        document.getElementById('user-name').innerText = userName;
+        document.getElementById('user-name').innerText = `Привет, ${userName}!`;
 
         const products = [
             { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
@@ -243,7 +236,7 @@
 
         function buyItem(itemId) {
             if (confirm("Отправить заявку на покупку этого товара?")) {
-                tg.sendData(itemId); // Мгновенно передает товар в бота и закрывает приложение
+                tg.sendData(itemId);
             }
         }
 
@@ -257,7 +250,7 @@
                 return;
             }
 
-            tg.sendData(`survey|${q1}|${q2}|${q3}`); // Передает опрос в бота
+            tg.sendData(`survey|${q1}|${q2}|${q3}`);
         }
     </script>
 </body>
