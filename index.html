@@ -136,8 +136,17 @@
         </div>
     </div>
 
+    <!-- ЭКРАН 5: ПАНЕЛЬ АДМИНИСТРАТОРА (появляется только у админов) -->
+    <div id="admin" class="screen">
+        <h2>👑 Панель Руководителя</h2>
+        <div class="card">
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Добро пожаловать в панель управления сетью CWB Star. Начисление звезд и управление заказами производятся через бота в Telegram.</p>
+            <button class="btn-primary" onclick="openBotAdmin()">Открыть чат с ботом</button>
+        </div>
+    </div>
+
     <!-- НИЖНЕЕ МЕНЮ -->
-    <nav class="tab-bar">
+    <nav class="tab-bar" id="nav-bar">
         <div class="tab active" onclick="switchTab('home')">
             <span class="tab-icon">👤</span>Главная
         </div>
@@ -160,11 +169,22 @@
         const urlParams = new URLSearchParams(window.location.search);
         const balance = urlParams.get('bal') || "0";
         const surveyCompleted = urlParams.get('survey') === "1";
+        const isAdmin = urlParams.get('admin') === "1";
         const historyRaw = urlParams.get('history') || "empty";
 
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
         document.getElementById('user-balance').innerText = `${balance} ⭐️`;
+
+        // Если пользователь администратор, добавляем вкладку Админки в нижнее меню
+        if (isAdmin) {
+            const navBar = document.getElementById('nav-bar');
+            navBar.innerHTML += `
+                <div class="tab" onclick="switchTab('admin')">
+                    <span class="tab-icon">👑</span>Админка
+                </div>
+            `;
+        }
 
         const histCont = document.getElementById('history-container');
         if (historyRaw === "empty" || !historyRaw) {
@@ -296,6 +316,10 @@
             }
 
             tg.sendData(`survey|${q1}|${q2}|${q3}`);
+        }
+
+        function openBotAdmin() {
+            tg.close(); // Закрывает мини апп, возвращая в чат с ботом, где доступна команда /admin
         }
     </script>
 </body>
