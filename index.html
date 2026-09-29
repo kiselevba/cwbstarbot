@@ -268,14 +268,14 @@
                     ordersListElem.innerHTML = "";
                     orders.forEach(o => {
                         ordersListElem.innerHTML += `
-                            <div class="card" id="order-card-${o.id}" style="background: #1c1c28; margin-bottom: 10px; padding: 12px;">
-                                <div style="width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <div class="history-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                                <div style="width: 100%; display: flex; justify-content: space-between;">
                                     <strong>${o.item}</strong>
                                     <span style="color: #ffd700;">${o.price} ⭐️</span>
                                 </div>
                                 <div style="font-size: 12px; color: var(--neon-blue);">Сотрудник: ${o.emp}</div>
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">${o.date}</div>
-                                <div style="display: flex; gap: 10px; width: 100%;">
+                                <div style="font-size: 11px; color: var(--text-muted);">${o.date}</div>
+                                <div style="display: flex; gap: 10px; width: 100%; margin-top: 5px;">
                                     <button class="btn-success" style="flex:1;" onclick="processOrder('order_app', ${o.id})">✅ Одобрить</button>
                                     <button class="btn-danger" style="flex:1;" onclick="processOrder('order_rej', ${o.id})">❌ Отклонить</button>
                                 </div>
@@ -296,7 +296,7 @@
             }
             updateTaskList();
 
-            // Заполняем список сотрудников
+            // Заполняем список сотрудников с кликом для запроса отчета в чат
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             try {
@@ -306,9 +306,9 @@
                     listElem.innerHTML = "";
                     users.forEach(u => {
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
-                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️️)</option>`;
+                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
                         listElem.innerHTML += `
-                            <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 10px 4px; border-bottom: 1px solid #2a2a35;">
+                            <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 12px 8px; border-bottom: 1px solid #2a2a35;">
                                 <div>
                                     <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">👤 ${u.name} 📥</div>
                                     <div class="history-date">Опрос: ${surveyText} | Нажмите для отчета в чат</div>
@@ -339,12 +339,6 @@
 
         function processOrder(action, orderId) {
             if (confirm("Подтвердить действие с заявкой?")) {
-                const card = document.getElementById(`order-card-${orderId}`);
-                if (card) {
-                    card.style.transition = "0.3s";
-                    card.style.opacity = "0";
-                    setTimeout(() => card.remove(), 300);
-                }
                 tg.sendData(`${action}|${orderId}`);
             }
         }
@@ -456,7 +450,7 @@
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
             c.items.forEach(t => {
-                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️️</div></div>`;
+                html += `<div class="task-item"><div class="task-name">• ${t.name}</div><div class="task-price">+${t.stars} ⭐️</div></div>`;
             });
             html += `</div>`;
             taskCont.innerHTML += html;
@@ -483,7 +477,7 @@
 
         function adminGiveTaskStars() {
             const userId = document.getElementById('admin-user-select').value;
-            const catId = document.getElementById('admin-cat-select').value; // Ошибка исправлена здесь
+            const catId = document.getElementById('admin-cat-select').value;
             const taskId = document.getElementById('admin-task-select').value;
 
             if (!userId || !catId || !taskId) {
