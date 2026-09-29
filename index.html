@@ -38,10 +38,16 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        .balance-block { text-align: center; padding: 30px 10px; border: 1px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,255,255,0.1); }
+        .balance-block { text-align: center; padding: 25px 10px; border: 1px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,255,255,0.1); }
         .balance-title { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-        .balance-amount { font-size: 32px; font-weight: bold; margin: 10px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        .balance-amount { font-size: 42px; font-weight: bold; margin: 10px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
         
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2a2a35; }
+        .history-item:last-child { border-bottom: none; }
+        .history-date { font-size: 11px; color: var(--text-muted); }
+        .income { color: #00ff00; font-weight: bold; }
+        .expense { color: var(--neon-pink); font-weight: bold; }
+
         .products-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .product-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border-left: 3px solid var(--neon-pink); }
         .product-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
@@ -54,8 +60,9 @@
 
         .task-cat { margin-bottom: 20px; }
         .task-cat-title { font-size: 15px; color: var(--neon-pink); margin-bottom: 10px; border-bottom: 1px solid #2a2a35; padding-bottom: 5px; }
-        .task-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; }
-        .task-name { flex: 1; padding-right: 10px; }
+        .task-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed #1f1f2b; }
+        .task-item:last-child { border-bottom: none; }
+        .task-name { flex: 1; padding-right: 10px; color: #d0d0e0; }
         .task-price { font-weight: bold; color: #ffd700; white-space: nowrap; }
 
         .survey-input {
@@ -80,35 +87,34 @@
 </head>
 <body>
 
-    <!-- ЭКРАН 1: ГЛАВНАЯ -->
+    <!-- ЭКРАН 1: ГЛАВНАЯ (Профиль, Баланс, История) -->
     <div id="home" class="screen active">
         <div class="card balance-block">
-            <div class="balance-title">Система мотивации</div>
-            <div class="balance-amount">CWB Stars ⭐️</div>
-            <div style="font-size: 16px; color: var(--text-muted);" id="user-name">Привет!</div>
+            <div class="balance-title" id="user-greeting">Твой баланс</div>
+            <div class="balance-amount" id="user-balance">0 ⭐️</div>
         </div>
         
-        <div class="card" style="text-align: center; padding: 20px;">
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Твой баланс и историю начислений можно посмотреть по кнопке в чате бота.</p>
-            <button class="btn-primary" onclick="switchTab('store')">Открыть Магазин</button>
+        <h3>📜 История операций</h3>
+        <div class="card" id="history-container">
+            <div style="text-align: center; color: var(--text-muted); padding: 15px;">История пока пуста</div>
         </div>
     </div>
 
     <!-- ЭКРАН 2: МАГАЗИН -->
     <div id="store" class="screen">
-        <h2>Магазин</h2>
+        <h2>🛒 Звездный Магазин</h2>
         <div class="products-grid" id="products-container"></div>
     </div>
 
     <!-- ЭКРАН 3: ЗАДАНИЯ -->
     <div id="tasks" class="screen">
-        <h2>Задания</h2>
+        <h2>📋 Задания и достижения</h2>
         <div class="card" id="tasks-container"></div>
     </div>
 
-    <!-- ЭКРАN 4: ОПРОС -->
+    <!-- ЭКРАН 4: ОПРОС -->
     <div id="survey" class="screen">
-        <h2>Опрос</h2>
+        <h2>📝 Опрос команды</h2>
         <div class="card" id="survey-form">
             <p style="color: var(--text-muted); margin-bottom: 20px;">Пройди опрос и получи 1 ⭐️ на свой счет!</p>
             
@@ -122,6 +128,11 @@
             <input type="text" id="q3" class="survey-input" placeholder="Твой ответ...">
             
             <button class="btn-primary" onclick="submitSurvey()">Отправить (+1 ⭐️)</button>
+        </div>
+        <div id="survey-done" style="display: none; text-align: center; padding: 40px 0;">
+            <div style="font-size: 40px; margin-bottom: 15px;">✅</div>
+            <h3>Опрос уже пройден!</h3>
+            <p style="color: var(--text-muted);">Спасибо за твой вклад в развитие сети.</p>
         </div>
     </div>
 
@@ -146,8 +157,47 @@
         tg.expand();
         tg.ready();
 
+        // Считываем параметры, переданные ботом в URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const balance = urlParams.get('bal') || "0";
+        const surveyCompleted = urlParams.get('survey') === "1";
+        const historyRaw = urlParams.get('history') || "empty";
+
+        // Заполняем баланс
+        document.getElementById('user-balance').innerText = `${balance} ⭐️`;
+        
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
-        document.getElementById('user-name').innerText = `Привет, ${userName}!`;
+        document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
+
+        // Отрисовка истории
+        const histCont = document.getElementById('history-container');
+        if (historyRaw === "empty" || !historyRaw) {
+            histCont.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">Операций пока нет</div>`;
+        } else {
+            histCont.innerHTML = "";
+            let items = historyRaw.split(",");
+            items.forEach(item => {
+                let parts = item.split("|");
+                if (parts.length === 4) {
+                    let [amount, type, desc, date] = parts;
+                    let isIncome = type === 'income';
+                    histCont.innerHTML += `
+                        <div class="history-item">
+                            <div>
+                                <div style="font-size: 14px;">${desc}</div>
+                                <div class="history-date">${date}</div>
+                            </div>
+                            <div class="${isIncome ? 'income' : 'expense'}">${isIncome ? '+' : '-'}${amount} ⭐️</div>
+                        </div>`;
+                }
+            });
+        }
+
+        // Если опрос пройден, скрываем форму
+        if (surveyCompleted) {
+            document.getElementById('survey-form').style.display = 'none';
+            document.getElementById('survey-done').style.display = 'block';
+        }
 
         const products = [
             { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
