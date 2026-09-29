@@ -65,11 +65,11 @@
         .task-name { flex: 1; padding-right: 10px; color: #d0d0e0; }
         .task-price { font-weight: bold; color: #ffd700; white-space: nowrap; }
 
-        .survey-input {
+        .survey-input, .admin-select {
             width: 100%; background: #0a0a0f; border: 1px solid #2a2a35; color: #fff;
-            padding: 12px; border-radius: 8px; margin-top: 8px; margin-bottom: 20px; outline: none;
+            padding: 12px; border-radius: 8px; margin-top: 8px; margin-bottom: 15px; outline: none;
         }
-        .survey-input:focus { border-color: var(--neon-blue); }
+        .survey-input:focus, .admin-select:focus { border-color: var(--neon-blue); }
         .btn-primary {
             background: var(--neon-blue); color: #000; border: none; padding: 12px; width: 100%;
             border-radius: 8px; font-weight: bold; font-size: 16px; text-transform: uppercase; cursor: pointer;
@@ -136,13 +136,26 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 5: ПАНЕЛЬ АДМИНИСТРАТОРА (появляется только у админов) -->
+    <!-- ЭКРАН 5: ПАНЕЛЬ АДМИНИСТРАТОРА -->
     <div id="admin" class="screen">
-        <h2>👑 Панель Руководителя</h2>
+        <h2>👑 Управление сотрудниками</h2>
         <div class="card">
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Добро пожаловать в панель управления сетью CWB Star. Начисление звезд и управление заказами производятся через бота в Telegram.</p>
-            <button class="btn-primary" onclick="openBotAdmin()">Открыть чат с ботом</button>
+            <h3 style="font-size: 16px; margin-bottom: 10px;">🌟 Начислить звезды</h3>
+            
+            <label>Выберите сотрудника:</label>
+            <select id="admin-user-select" class="admin-select"></select>
+
+            <label>Количество звезд:</label>
+            <input type="number" id="admin-stars-amount" class="survey-input" placeholder="Например: 5" value="5">
+
+            <label>Причина / За что начислено:</label>
+            <input type="text" id="admin-reason" class="survey-input" placeholder="Например: Выполнение плана за смену">
+
+            <button class="btn-primary" onclick="adminGiveStars()">Начислить звезды</button>
         </div>
+
+        <h3>👥 Список сотрудников</h3>
+        <div class="card" id="admin-users-list"></div>
     </div>
 
     <!-- НИЖНЕЕ МЕНЮ -->
@@ -171,12 +184,13 @@
         const surveyCompleted = urlParams.get('survey') === "1";
         const isAdmin = urlParams.get('admin') === "1";
         const historyRaw = urlParams.get('history') || "empty";
+        const usersRaw = urlParams.get('users') || "empty";
 
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
         document.getElementById('user-balance').innerText = `${balance} ⭐️`;
 
-        // Если пользователь администратор, добавляем вкладку Админки в нижнее меню
+        // Если пользователь администратор, добавляем вкладку Админки и заполняем её данными
         if (isAdmin) {
             const navBar = document.getElementById('nav-bar');
             navBar.innerHTML += `
@@ -184,6 +198,35 @@
                     <span class="tab-icon">👑</span>Админка
                 </div>
             `;
+
+            const selectElem = document.getElementById('admin-user-select');
+            const listElem = document.getElementById('admin-users-list');
+            
+            if (usersRaw !== "empty" && usersRaw) {
+                selectElem.innerHTML = "";
+                listElem.innerHTML = "";
+                let users = decodeURIComponent(usersRaw).split("---");
+                users.forEach(uStr => {
+                    let parts = uStr.split(":");
+                    if (parts.length === 4) {
+                        let [id, name, bal, survey] = parts;
+                        let surveyText = survey === "1" ? "✅ Прошел" : "❌ Не прошел";
+                        
+                        selectElem.innerHTML += `<option value="${id}">${name} (Баланс: ${bal} ⭐️)</option>`;
+                        listElem.innerHTML += `
+                            <div class="history-item">
+                                <div>
+                                    <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">${name}</div>
+                                    <div class="history-date">Опрос: ${surveyText}</div>
+                                </div>
+                                <div style="color: #ffd700; font-weight: bold;">${bal} ⭐️</div>
+                            </div>`;
+                    }
+                });
+            } else {
+                selectElem.innerHTML = `<option>Нет сотрудников</option>`;
+                listElem.innerHTML = `<div style="text-align: center; color: var(--text-muted);">Сотрудников пока нет</div>`;
+            }
         }
 
         const histCont = document.getElementById('history-container');
@@ -318,8 +361,19 @@
             tg.sendData(`survey|${q1}|${q2}|${q3}`);
         }
 
-        function openBotAdmin() {
-            tg.close(); // Закрывает мини апп, возвращая в чат с ботом, где доступна команда /admin
+        function adminGiveStars() {
+            const userId = document.getElementById('admin-user-select').value;
+            const amount = document.getElementById('admin-stars-amount').value.trim();
+            const reason = document.getElementById('admin-reason').value.trim();
+
+            if (!userId || !amount || !reason) {
+                alert("Заполните все поля для начисления!");
+                return;
+            }
+
+            if (confirm(`Начислить ${amount} ⭐️ выбранному сотруднику?`)) {
+                tg.sendData(`give_stars|${userId}|${amount}|${reason}`);
+            }
         }
     </script>
 </body>
