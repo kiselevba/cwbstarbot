@@ -74,6 +74,8 @@
             background: var(--neon-blue); color: #000; border: none; padding: 12px; width: 100%;
             border-radius: 8px; font-weight: bold; font-size: 16px; text-transform: uppercase; cursor: pointer;
         }
+        .btn-success { background: #00ff00; color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-danger { background: var(--neon-pink); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
         .tab-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
@@ -92,6 +94,7 @@
         <div class="card balance-block">
             <div class="balance-title" id="user-greeting">Твой баланс</div>
             <div class="balance-amount" id="user-balance">0 ⭐️</div>
+            <button style="background:transparent; border:1px solid var(--neon-blue); color:var(--neon-blue); padding:6px 14px; border-radius:6px; font-size:12px; cursor:pointer; margin-top:10px;" onclick="refreshData()">🔄 Обновить данные</button>
         </div>
         
         <h3>📜 История операций</h3>
@@ -116,7 +119,7 @@
     <div id="survey" class="screen">
         <h2>📝 Опрос команды</h2>
         <div class="card" id="survey-form">
-            <p style="color: var(--text-muted); margin-bottom: 20px;">Пройди опрос и получи 1 ⭐️ на свой счет!</p>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Пройди опрос и получи 1 ⭐️️ на свой счет!</p>
             
             <label>Какой товар кажется самым привлекательным?</label>
             <input type="text" id="q1" class="survey-input" placeholder="Твой ответ...">
@@ -138,10 +141,15 @@
 
     <!-- ЭКРАН 5: ПАНЕЛЬ АДМИНИСТРАТОРА -->
     <div id="admin" class="screen">
-        <h2>👑 Управление сотрудниками</h2>
+        <h2>👑 Панель Руководителя</h2>
+        
+        <div class="card">
+            <h3 style="font-size: 16px; margin-bottom: 10px; color: var(--neon-pink);">📦 Заявки из магазина</h3>
+            <div id="admin-orders-list"><div style="color: var(--text-muted); text-align:center;">Нет новых заявок</div></div>
+        </div>
+
         <div class="card">
             <h3 style="font-size: 16px; margin-bottom: 10px;">🌟 Начислить звезды</h3>
-            
             <label>Выберите сотрудника:</label>
             <select id="admin-user-select" class="admin-select"></select>
 
@@ -185,12 +193,16 @@
         const isAdmin = urlParams.get('admin') === "1";
         const historyRaw = urlParams.get('history') || "empty";
         const usersRaw = urlParams.get('users') || "empty";
+        const ordersRaw = urlParams.get('orders') || "empty";
 
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
         document.getElementById('user-balance').innerText = `${balance} ⭐️`;
 
-        // Если пользователь администратор, добавляем вкладку Админки и заполняем её данными
+        function refreshData() {
+            tg.sendData("get_balance"); // Запрашивает свежие данные в чат с ботом для синхронизации
+        }
+
         if (isAdmin) {
             const navBar = document.getElementById('nav-bar');
             navBar.innerHTML += `
@@ -199,6 +211,32 @@
                 </div>
             `;
 
+            // Заполняем заявки из магазина
+            const ordersListElem = document.getElementById('admin-orders-list');
+            if (ordersRaw !== "empty" && ordersRaw) {
+                ordersListElem.innerHTML = "";
+                let orders = decodeURIComponent(ordersRaw).split("---");
+                orders.forEach(oStr => {
+                    let parts = oStr.split(":");
+                    if (parts.length === 5) {
+                        let [orderId, uId, itemName, price, date] = parts;
+                        ordersListElem.innerHTML += `
+                            <div class="history-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                                <div style="width: 100%; display: flex; justify-content: space-between;">
+                                    <strong>${itemName}</strong>
+                                    <span style="color: #ffd700;">${price} ⭐️</span>
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${date} | ID сотрудника: ${uId}</div>
+                                <div style="display: flex; gap: 10px; width: 100%; margin-top: 5px;">
+                                    <button class="btn-success" style="flex:1;" onclick="processOrder('order_app', ${orderId})">✅ Одобрить</button>
+                                    <button class="btn-danger" style="flex:1;" onclick="processOrder('order_rej', ${orderId})">❌ Отклонить</button>
+                                </div>
+                            </div>`;
+                    }
+                });
+            }
+
+            // Заполняем список сотрудников
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             
@@ -223,9 +261,12 @@
                             </div>`;
                     }
                 });
-            } else {
-                selectElem.innerHTML = `<option>Нет сотрудников</option>`;
-                listElem.innerHTML = `<div style="text-align: center; color: var(--text-muted);">Сотрудников пока нет</div>`;
+            }
+        }
+
+        function processOrder(action, orderId) {
+            if (confirm("Подтвердить действие с заявкой?")) {
+                tg.sendData(`${action}|${orderId}`);
             }
         }
 
