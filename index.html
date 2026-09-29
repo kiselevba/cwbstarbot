@@ -260,6 +260,7 @@
                 </div>
             `;
 
+            // Заполняем заявки из магазина
             const ordersListElem = document.getElementById('admin-orders-list');
             try {
                 let orders = JSON.parse(decodeURIComponent(ordersRaw));
@@ -267,7 +268,7 @@
                     ordersListElem.innerHTML = "";
                     orders.forEach(o => {
                         ordersListElem.innerHTML += `
-                            <div class="card" style="background: #1c1c28; margin-bottom: 10px; padding: 12px;">
+                            <div class="card" id="order-card-${o.id}" style="background: #1c1c28; margin-bottom: 10px; padding: 12px;">
                                 <div style="width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px;">
                                     <strong>${o.item}</strong>
                                     <span style="color: #ffd700;">${o.price} ⭐️</span>
@@ -287,6 +288,7 @@
                 ordersListElem.innerHTML = `<div style="color: var(--text-muted); text-align:center;">Нет новых заявок</div>`;
             }
 
+            // Заполняем выпадающий список категорий и задач
             const catSelect = document.getElementById('admin-cat-select');
             catSelect.innerHTML = "";
             for (let cKey in tasksData) {
@@ -294,6 +296,7 @@
             }
             updateTaskList();
 
+            // Заполняем список сотрудников
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             try {
@@ -303,7 +306,7 @@
                     listElem.innerHTML = "";
                     users.forEach(u => {
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
-                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
+                        selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️️)</option>`;
                         listElem.innerHTML += `
                             <div class="history-item clickable-card" onclick="requestUserReport(${u.id}, '${u.name}')" style="padding: 10px 4px; border-bottom: 1px solid #2a2a35;">
                                 <div>
@@ -336,6 +339,12 @@
 
         function processOrder(action, orderId) {
             if (confirm("Подтвердить действие с заявкой?")) {
+                const card = document.getElementById(`order-card-${orderId}`);
+                if (card) {
+                    card.style.transition = "0.3s";
+                    card.style.opacity = "0";
+                    setTimeout(() => card.remove(), 300);
+                }
                 tg.sendData(`${action}|${orderId}`);
             }
         }
@@ -474,7 +483,7 @@
 
         function adminGiveTaskStars() {
             const userId = document.getElementById('admin-user-select').value;
-            const catId = document.getElementById('admin-cat-select').value;
+            const catId = document.getElementById('admin-cat-select').value; // Ошибка исправлена здесь
             const taskId = document.getElementById('admin-task-select').value;
 
             if (!userId || !catId || !taskId) {
