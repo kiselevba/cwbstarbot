@@ -21,16 +21,14 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding-bottom: 70px; /* Отступ для нижнего меню */
+            padding-bottom: 80px;
         }
         h1, h2, h3 { margin-top: 0; color: var(--neon-blue); text-shadow: 0 0 10px rgba(0,255,255,0.3); }
         
-        /* Экраны */
         .screen { display: none; padding: 20px; animation: fadeIn 0.3s; }
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Карточки */
         .card {
             background: var(--card-bg);
             border: 1px solid rgba(255, 0, 255, 0.3);
@@ -40,17 +38,16 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        /* Главная: Баланс */
         .balance-block { text-align: center; padding: 30px 10px; border: 1px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,255,255,0.1); }
         .balance-title { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
         .balance-amount { font-size: 48px; font-weight: bold; margin: 10px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2a2a35; }
         .history-item:last-child { border-bottom: none; }
         .history-date { font-size: 12px; color: var(--text-muted); }
         .income { color: #00ff00; }
         .expense { color: var(--neon-pink); }
 
-        /* Магазин */
         .products-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .product-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border-left: 3px solid var(--neon-pink); }
         .product-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
@@ -61,14 +58,12 @@
         }
         .buy-btn:active { background: var(--neon-pink); color: #fff; }
 
-        /* Задания */
         .task-cat { margin-bottom: 20px; }
-        .task-cat-title { font-size: 16px; color: var(--neon-pink); margin-bottom: 10px; border-bottom: 1px solid #2a2a35; padding-bottom: 5px; }
+        .task-cat-title { font-size: 15px; color: var(--neon-pink); margin-bottom: 10px; border-bottom: 1px solid #2a2a35; padding-bottom: 5px; }
         .task-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; }
         .task-name { flex: 1; padding-right: 10px; }
         .task-price { font-weight: bold; color: #ffd700; white-space: nowrap; }
 
-        /* Опрос */
         .survey-input {
             width: 100%; background: #0a0a0f; border: 1px solid #2a2a35; color: #fff;
             padding: 12px; border-radius: 8px; margin-top: 8px; margin-bottom: 20px; outline: none;
@@ -76,10 +71,9 @@
         .survey-input:focus { border-color: var(--neon-blue); }
         .btn-primary {
             background: var(--neon-blue); color: #000; border: none; padding: 12px; width: 100%;
-            border-radius: 8px; font-weight: bold; font-size: 16px; text-transform: uppercase;
+            border-radius: 8px; font-weight: bold; font-size: 16px; text-transform: uppercase; cursor: pointer;
         }
 
-        /* Нижнее меню навигации */
         .tab-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #0d0d12; border-top: 1px solid #2a2a35;
@@ -103,24 +97,19 @@
         <h3>История операций</h3>
         <div class="card" id="history-container">
             <div style="text-align: center; color: var(--text-muted); padding: 20px;">Загрузка истории...</div>
-            <!-- Сюда подгрузится история с сервера -->
         </div>
     </div>
 
     <!-- ЭКРАН 2: МАГАЗИН -->
     <div id="store" class="screen">
         <h2>Магазин</h2>
-        <div class="products-grid" id="products-container">
-            <!-- Сюда подгрузятся товары -->
-        </div>
+        <div class="products-grid" id="products-container"></div>
     </div>
 
     <!-- ЭКРАН 3: ЗАДАНИЯ -->
     <div id="tasks" class="screen">
         <h2>Задания</h2>
-        <div id="tasks-container">
-            <!-- Сюда подгрузятся задания -->
-        </div>
+        <div class="card" id="tasks-container"></div>
     </div>
 
     <!-- ЭКРАН 4: ОПРОС -->
@@ -147,7 +136,7 @@
         </div>
     </div>
 
-    <!-- НИЖНЕЕ МЕНЮ (TAB BAR) -->
+    <!-- НИЖНЕЕ МЕНЮ -->
     <nav class="tab-bar">
         <div class="tab active" onclick="switchTab('home')">
             <span class="tab-icon">👤</span>Главная
@@ -168,32 +157,106 @@
         tg.expand();
         tg.ready();
 
-        // Справочник товаров
+        const userId = tg.initDataUnsafe?.user?.id || 514662828;
+        const API_URL = "http://127.0.0.1:8000";
+
+        async function loadUserData() {
+            try {
+                let response = await fetch(`${API_URL}/api/user/${userId}`);
+                let data = await response.json();
+
+                if (data.status === "ok") {
+                    document.getElementById('user-name').innerText = data.full_name;
+                    document.getElementById('user-balance').innerText = data.balance + " ⭐️";
+
+                    let historyHtml = "";
+                    if (data.history.length === 0) {
+                        historyHtml = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">История пуста</div>`;
+                    } else {
+                        data.history.forEach(h => {
+                            let isIncome = h.type === 'income';
+                            historyHtml += `
+                                <div class="history-item">
+                                    <div>
+                                        <div style="font-size: 14px;">${h.desc}</div>
+                                        <div class="history-date">${h.date}</div>
+                                    </div>
+                                    <div class="${isIncome ? 'income' : 'expense'}">${isIncome ? '+' : '-'}${h.amount} ⭐️</div>
+                                </div>`;
+                        });
+                    }
+                    document.getElementById('history-container').innerHTML = historyHtml;
+
+                    if (data.survey_completed === 1) {
+                        document.getElementById('survey-form').style.display = 'none';
+                        document.getElementById('survey-done').style.display = 'block';
+                    }
+                } else {
+                    document.getElementById('user-name').innerText = "Ошибка авторизации";
+                }
+            } catch (e) {
+                console.error("Ошибка связи с сервером:", e);
+                document.getElementById('user-name').innerText = "Сервер не отвечает";
+            }
+        }
+
+        loadUserData();
+
         const products = [
             { id: "item_1", name: "Чаша Северный Космобол", price: 5, desc: "Отличная чаша, идеальна для крепких забивок." },
             { id: "item_2", name: "Щипцы Муассель", price: 7, desc: "Удобные фирменные щипцы для работы с углем." },
             { id: "item_3", name: "Такси до работы (эконом)", price: 10, desc: "Оплатим твою поездку на смену на такси." },
             { id: "item_4", name: "Термостакан Муассель", price: 10, desc: "Стильный фирменный стакан." },
+            { id: "item_5", name: "Обнуление одного опоздания", price: 15, desc: "Прощаем одно опоздание до 15 минут." },
+            { id: "item_6", name: "Термокружка Муассель", price: 15, desc: "Фирменная кружка, долго держит тепло." },
+            { id: "item_7", name: "Обед на рабочем месте", price: 15, desc: "Доставка из KFC, BurgerKing или Вкусно и точка." },
             { id: "item_8", name: "Энергетики HQD/Gorilla (12 шт)", price: 15, desc: "Месячный запас бодрости!" },
+            { id: "item_9", name: "Энергетики Monster (12 шт)", price: 25, desc: "Месячный запас крутого энергетика!" },
             { id: "item_10", name: "Рандом бокс", price: 25, desc: "Сюрприз-бокс с секретным наполнением." },
-            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты." }
-            // Я добавил часть товаров для примера, ты сможешь легко скопировать сюда остальные!
+            { id: "item_11", name: "+15 тыс в личный план", price: 30, desc: "Помощь в выполнении личного плана продаж." },
+            { id: "item_12", name: "Сертификат Золотое Яблоко", price: 40, desc: "Подарочный сертификат на 3000 рублей." },
+            { id: "item_13", name: "Рюкзак Муассель", price: 45, desc: "Вместительный фирменный рюкзак." },
+            { id: "item_14", name: "Кофта Муассель (размер S)", price: 55, desc: "Уютная фирменная кофта." },
+            { id: "item_15", name: "Глэмпинг «Лесотерапия»", price: 65, desc: "Суточный отдых на двоих на природе." },
+            { id: "item_16", name: "Премия 7 000 руб.", price: 90, desc: "Приятная денежная прибавка." },
+            { id: "item_17", name: "Невыход на подмены (2 мес)", price: 100, desc: "Официальное освобождение от подмен." },
+            { id: "item_18", name: "Кальян Alpha", price: 180, desc: "Модели на выбор: X, Enzo, ОСД, Gold, Биты." },
+            { id: "item_19", name: "Премия 15 000 руб.", price: 200, desc: "Мощный денежный бонус!" },
+            { id: "item_20", name: "Чаша Хука", price: 350, desc: "Эксклюзивный ценный приз!" }
         ];
 
-        // Справочник заданий
         const tasks = [
-            { cat: "Продажи", items: [
-                { name: "Выполнение плана", stars: 3 },
+            { cat: "1. Продажи", items: [
+                { name: "Выполнение личного плана продаж на протяжении трех месяцев подряд", stars: 25 },
+                { name: "Выполнение личного плана продаж на протяжении пяти месяцев подряд", stars: 25 },
                 { name: "Рекордная выручка за смену", stars: 40 },
-                { name: "Выполнение плана (3 мес. подряд)", stars: 25 }
+                { name: "Первое выполнение индивидуального плана продаж", stars: 5 },
+                { name: "Продал больше всех акций в период проведения", stars: 10 },
+                { name: "Выполнение плана продаж на 110 и более %", stars: 15 },
+                { name: "Выполнение плана", stars: 3 },
+                { name: "Продал больше всех единиц товара в период мотивации в своей категории", stars: 7 }
             ]},
-            { cat: "Инициатива", items: [
+            { cat: "2. Личное развитие", items: [
+                { name: "Прохождение стажировки и сдача экзамена для начала работы продавцом", stars: 5 },
+                { name: "Повышение до грейда “старший продавец”", stars: 15 },
+                { name: "Повышение до грейда “эксперт”", stars: 25 },
+                { name: "Успешное прохождение всех тренингов по продажам", stars: 10 }
+            ]},
+            { cat: "3. Качество", items: [
+                { name: "Ревизия с расхождением до 1000 руб. на протяжении 2 месяцев подряд", stars: 7 },
+                { name: "Успешная сдача стандартов по итогам двух проверок 32/32", stars: 5 },
+                { name: "Успешное прохождение проверки тайным покупателем на максимальный балл", stars: 50 }
+            ]},
+            { cat: "4. Инициатива", items: [
+                { name: "Организация досуга команды", stars: 5 },
+                { name: "Организация и проведение обучения для сотрудников", stars: 10 },
+                { name: "Приведенный друг в компанию, который отработал 3 месяца", stars: 15 },
+                { name: "Наставничество новых сотрудников на протяжении месяца с конкретными результатами", stars: 10 },
                 { name: "Выход на подмену", stars: 2 },
-                { name: "Приведенный друг в компанию", stars: 15 }
+                { name: "Выход на экстренную подмену (уведомление за сутки и меньше до смены)", stars: 5 }
             ]}
         ];
 
-        // Переключение экранов
         function switchTab(tabId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -201,7 +264,6 @@
             event.currentTarget.classList.add('active');
         }
 
-        // Отрисовка магазина
         const prodCont = document.getElementById('products-container');
         products.forEach(p => {
             prodCont.innerHTML += `
@@ -215,7 +277,6 @@
                 </div>`;
         });
 
-        // Отрисовка заданий
         const taskCont = document.getElementById('tasks-container');
         tasks.forEach(c => {
             let html = `<div class="task-cat"><div class="task-cat-title">${c.cat}</div>`;
@@ -226,28 +287,23 @@
             taskCont.innerHTML += html;
         });
 
-        // Фейковые данные для локального теста дизайна
-        document.getElementById('user-name').innerText = "Вячеслав Киселев";
-        document.getElementById('user-balance').innerText = "150 ⭐️";
-        document.getElementById('history-container').innerHTML = `
-            <div class="history-item">
-                <div><div style="font-size: 14px;">Рекордная выручка</div><div class="history-date">29.09.2026 10:00</div></div>
-                <div class="income">+40 ⭐️</div>
-            </div>
-            <div class="history-item">
-                <div><div style="font-size: 14px;">Покупка: Щипцы</div><div class="history-date">28.09.2026 15:30</div></div>
-                <div class="expense">-7 ⭐️</div>
-            </div>
-        `;
-
-        function buyItem(id) {
-            alert("В будущем здесь будет отправка запроса на покупку товара " + id);
+        function buyItem(itemId) {
+            if (confirm("Отправить заявку на покупку этого товара?")) {
+                tg.sendData(itemId);
+            }
         }
 
         function submitSurvey() {
-            document.getElementById('survey-form').style.display = 'none';
-            document.getElementById('survey-done').style.display = 'block';
-            alert("Опрос отправлен!");
+            let q1 = document.getElementById('q1').value.trim();
+            let q2 = document.getElementById('q2').value.trim();
+            let q3 = document.getElementById('q3').value.trim();
+
+            if (!q1 || !q2 || !q3) {
+                alert("Пожалуйста, ответьте на все вопросы!");
+                return;
+            }
+
+            tg.sendData(`survey|${q1}|${q2}|${q3}`);
         }
     </script>
 </body>
