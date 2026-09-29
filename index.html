@@ -48,9 +48,6 @@
         .income { color: #00ff00; font-weight: bold; }
         .expense { color: var(--neon-pink); font-weight: bold; }
 
-        .clickable-card { cursor: pointer; transition: 0.2s; }
-        .clickable-card:active { border-color: var(--neon-blue); background: #1a1a26; }
-
         .products-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .product-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border-left: 3px solid var(--neon-pink); }
         .product-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
@@ -144,45 +141,30 @@
 
     <!-- ЭКРАН 5: ПАНЕЛЬ АДМИНИСТРАТОРА -->
     <div id="admin" class="screen">
-        <div id="admin-main-view">
-            <h2>👑 Панель Руководителя</h2>
+        <h2>👑 Панель Руководителя</h2>
+        
+        <div class="card">
+            <h3 style="font-size: 16px; margin-bottom: 10px; color: var(--neon-pink);">📦 Заявки из магазина</h3>
+            <div id="admin-orders-list"><div style="color: var(--text-muted); text-align:center;">Нет новых заявок</div></div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 16px; margin-bottom: 10px;">🌟 Начислить звезды по ТЗ</h3>
             
-            <div class="card">
-                <h3 style="font-size: 16px; margin-bottom: 10px; color: var(--neon-pink);">📦 Заявки из магазина</h3>
-                <div id="admin-orders-list"><div style="color: var(--text-muted); text-align:center;">Нет новых заявок</div></div>
-            </div>
+            <label>Выберите сотрудника:</label>
+            <select id="admin-user-select" class="admin-select"></select>
 
-            <div class="card">
-                <h3 style="font-size: 16px; margin-bottom: 10px;">🌟 Начислить звезды по ТЗ</h3>
-                
-                <label>Выберите сотрудника:</label>
-                <select id="admin-user-select" class="admin-select"></select>
+            <label>Категория достижения:</label>
+            <select id="admin-cat-select" class="admin-select" onchange="updateTaskList()"></select>
 
-                <label>Категория достижения:</label>
-                <select id="admin-cat-select" class="admin-select" onchange="updateTaskList()"></select>
+            <label>Конкретное достижение:</label>
+            <select id="admin-task-select" class="admin-select"></select>
 
-                <label>Конкретное достижение:</label>
-                <select id="admin-task-select" class="admin-select"></select>
-
-                <button class="btn-primary" onclick="adminGiveTaskStars()">Начислить звезды</button>
-            </div>
-
-            <h3>👥 Список сотрудников</h3>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Нажмите на сотрудника, чтобы посмотреть его историю.</p>
-            <div class="card" id="admin-users-list"></div>
+            <button class="btn-primary" onclick="adminGiveTaskStars()">Начислить звезды</button>
         </div>
 
-        <!-- Подэкран просмотра истории конкретного сотрудника -->
-        <div id="admin-user-detail-view" style="display: none;">
-            <button style="background:transparent; border:1px solid var(--neon-blue); color:var(--neon-blue); padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:15px;" onclick="closeUserDetail()">⬅️ Назад к списку</button>
-            <div class="card balance-block">
-                <div class="balance-title" id="detail-user-name">Сотрудник</div>
-                <div class="balance-amount" id="detail-user-balance">0 ⭐️</div>
-                <div style="font-size: 13px; color: var(--text-muted);" id="detail-user-survey">Опрос: -</div>
-            </div>
-            <h3>📜 История операций сотрудника</h3>
-            <div class="card" id="detail-user-history"></div>
-        </div>
+        <h3>👥 Список сотрудников</h3>
+        <div class="card" id="admin-users-list"></div>
     </div>
 
     <!-- НИЖНЕЕ МЕНЮ -->
@@ -213,8 +195,6 @@
         const historyRaw = urlParams.get('history') || "empty";
         const usersRaw = urlParams.get('users') || "[]";
         const ordersRaw = urlParams.get('orders') || "[]";
-
-        let globalUsersData = [];
 
         const userName = tg.initDataUnsafe?.user?.first_name || "Коллега";
         document.getElementById('user-greeting').innerText = `${userName}, твой баланс`;
@@ -312,65 +292,30 @@
             }
             updateTaskList();
 
-            // Заполняем список сотрудников с возможностью клика
+            // Заполняем список сотрудников
             const selectElem = document.getElementById('admin-user-select');
             const listElem = document.getElementById('admin-users-list');
             try {
-                globalUsersData = JSON.parse(decodeURIComponent(usersRaw));
-                if (globalUsersData && globalUsersData.length > 0) {
+                let users = JSON.parse(decodeURIComponent(usersRaw));
+                if (users && users.length > 0) {
                     selectElem.innerHTML = "";
                     listElem.innerHTML = "";
-                    globalUsersData.forEach((u, index) => {
+                    users.forEach(u => {
                         let surveyText = u.survey === 1 ? "✅ Прошел" : "❌ Не прошел";
                         selectElem.innerHTML += `<option value="${u.id}">${u.name} (Баланс: ${u.balance} ⭐️)</option>`;
                         listElem.innerHTML += `
-                            <div class="history-item clickable-card" onclick="openUserDetail(${index})" style="padding: 12px 8px; border-bottom: 1px solid #2a2a35;">
+                            <div class="history-item">
                                 <div>
-                                    <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">👤 ${u.name} ➡️</div>
+                                    <div style="font-size: 15px; font-weight: bold; color: var(--neon-blue);">${u.name}</div>
                                     <div class="history-date">Опрос: ${surveyText}</div>
                                 </div>
-                                <div style="color: #ffd700; font-weight: bold; font-size: 16px;">${u.balance} ⭐️</div>
+                                <div style="color: #ffd700; font-weight: bold;">${u.balance} ⭐️</div>
                             </div>`;
                     });
                 }
             } catch (e) {
                 console.error("Ошибка парсинга сотрудников:", e);
             }
-        }
-
-        function openUserDetail(index) {
-            let u = globalUsersData[index];
-            if (!u) return;
-
-            document.getElementById('detail-user-name').innerText = u.name;
-            document.getElementById('detail-user-balance').innerText = `${u.balance} ⭐️`;
-            document.getElementById('detail-user-survey').innerText = u.survey === 1 ? "Опрос: ✅ Пройден" : "Опрос: ❌ Не пройден";
-
-            const histElem = document.getElementById('detail-user-history');
-            if (u.history && u.history.length > 0) {
-                histElem.innerHTML = "";
-                u.history.forEach(h => {
-                    let isIncome = h.type === 'income';
-                    histElem.innerHTML += `
-                        <div class="history-item">
-                            <div>
-                                <div style="font-size: 14px;">${h.desc}</div>
-                                <div class="history-date">${h.date}</div>
-                            </div>
-                            <div class="${isIncome ? 'income' : 'expense'}">${isIncome ? '+' : '-'}${h.amount} ⭐️</div>
-                        </div>`;
-                });
-            } else {
-                histElem.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 15px;">Операций пока нет</div>`;
-            }
-
-            document.getElementById('admin-main-view').style.display = 'none';
-            document.getElementById('admin-user-detail-view').style.display = 'block';
-        }
-
-        function closeUserDetail() {
-            document.getElementById('admin-user-detail-view').style.display = 'none';
-            document.getElementById('admin-main-view').style.display = 'block';
         }
 
         function updateTaskList() {
@@ -485,7 +430,7 @@
                     <div class="product-title">${p.name}</div>
                     <div class="product-desc">${p.desc}</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️</span>
+                        <span style="color: #ffd700; font-weight: bold; font-size: 18px;">${p.price} ⭐️️</span>
                         <button class="buy-btn" onclick="buyItem('${p.id}')">Купить</button>
                     </div>
                 </div>`;
